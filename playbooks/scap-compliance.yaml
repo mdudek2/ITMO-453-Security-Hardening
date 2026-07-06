@@ -1,0 +1,71 @@
+- name: Run compliance and remediation via openscap
+  hosts: all
+  become: true
+  become_method: sudo
+
+  vars:
+    ansible_user: admin
+    ansible_ssh_private_key_file: /home/maks/.ssh/project-ssh-key
+
+  tasks:
+    # copy over the install script for openscap
+    - name: Copy openscap install script
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/scripts/scap.sh"
+        dest: "/home/admin/scap.sh"
+        owner: root
+        group: root
+        mode: '0755'
+    
+    # Install openscap and run a compliance check
+    # The scap.sh script will install everything thats needed
+    # and also perform a check and generate a remediation script
+    - name: Install openscap and run compliance check
+      ansible.builtin.shell: /home/admin/scap.sh
+      args:
+        chdir: /home/admin
+        executable: /bin/bash
+    
+    # make the generated script executable
+    - name: Ensure remediation script is executable
+      ansible.builtin.file:
+        path: /home/admin/cis-remediation.sh
+        mode: '0755'
+    
+    # run the remediation script
+    - name: Run remediation script
+      ansible.builtin.shell: /home/admin/cis-remediation.sh
+      args:
+        chdir: /home/admin
+        executable: /bin/bash
+
+# The remediation script disables and masks nginx, so it must be enabled once again on the web servers
+- name: Enable and unmask nginx
+  hosts: webservers
+  become: true
+  become_method: sudo
+
+  vars:
+    ansible_user: admin
+    ansible_ssh_private_key_file: /home/maks/.ssh/project-ssh-key
+
+  tasks:
+
+    # make sure nginx is installed
+    - name: Install nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: true
+    
+    # make sure that nginx is unmasked
+    - name: Unmask nginx
+      ansible.builtin.systemd:
+        name: nginx
+        masked: false
+
+    # restart nginx
+    - name: Restart nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted

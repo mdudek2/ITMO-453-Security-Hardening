@@ -1,0 +1,447 @@
+---
+- name: Configure Services
+  hosts: labproject
+  become: true
+  become_method: sudo
+
+  vars:
+    ansible_user: admin
+    ansible_ssh_private_key_file: /home/maks/.ssh/project-ssh-key
+
+  tasks:
+
+    # make sure nginx is installed
+    - name: Install nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: true
+    
+    # make sure that nginx is unmasked
+    - name: Unmask nginx
+      ansible.builtin.systemd:
+        name: nginx
+        masked: false
+
+    # restart nginx
+    - name: Restart nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted
+
+    # disable the default site
+    - name: Remove default nginx configuration
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    # copy over configuration for the new site
+    - name: Add nginx configuration
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/hello-site.conf"
+        dest: /etc/nginx/sites-available/hello-site.conf
+        owner: root
+        group: root
+        mode: '0644'
+
+    # copy the new website to each webserver
+    - name: Copy website to servers
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/html/index.html"
+        dest: /var/www/html/index.html
+        owner: root
+        group: root
+        mode: '0644'
+
+    # enable the site on nginx
+    - name: Enable the site on nginx
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/hello-site.conf
+        dest: /etc/nginx/sites-enabled/hello-site.conf
+        state: link
+        force: true
+
+    # install node-exporter and nginx-exporter
+    - name: Install exporters for metrics packages
+      ansible.builtin.apt:
+        name:
+          - prometheus-node-exporter
+          - prometheus-nginx-exporter
+        state: present
+
+    # copy the nginx metrics configuration file
+    - name: Copy metrics.conf to nginx configuration
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/metrics.conf"
+        dest: /etc/nginx/conf.d/metrics.conf
+        owner: root
+        group: root
+        mode: '0644'
+
+    # enable exporters
+    - name: Enable metrics reporting services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: true
+      loop:
+        - prometheus-node-exporter
+        - prometheus-nginx-exporter
+
+    # start exporters
+    - name: Start metrics reporting services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - prometheus-node-exporter
+        - prometheus-nginx-exporter
+
+    # validate nginx configuration
+    - name: Test nginx configuration
+      ansible.builtin.command:
+        cmd: nginx -t
+      changed_when: false
+
+    # restart nginx to apply the new configuration
+    - name: Restart nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted
+
+- name: Configure prometheus to monitor the deployed website
+  hosts: labproject
+  become: true
+  become_method: sudo
+
+  vars:
+    ansible_user: admin
+    ansible_ssh_private_key_file: /home/maks/.ssh/project-ssh-key
+
+  tasks:
+    
+    # copy the config file
+    - name: Copy the prometheus configuration file
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/prometheus.yml"
+        dest: /etc/prometheus/prometheus.yml
+        owner: root
+        group: root
+        mode: '0644'
+    
+    # restart prometheus to apply the configuration
+    - name: Restart prometheus
+      ansible.builtin.systemd:
+        name: prometheus
+        state: restarted
+
+# install uptime-kuma on the server
+- name: Install Docker and additional monitoring and logging services
+  hosts: labproject
+  become: true
+  become_method: sudo
+
+  vars:
+    ansible_user: admin
+    ansible_ssh_private_key_file: /home/maks/.ssh/project-ssh-key
+  
+  tasks:
+  
+  # install needed dependencies
+  - name: Install required packages
+    ansible.builtin.apt:
+      name:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - software-properties-common
+      state: present
+      update_cache: true
+  
+  # grab the script from the docker website and run it
+  - name: Install Docker using the official installation script
+    ansible.builtin.shell: |
+      curl -fsSL https://get.docker.com | bash
+    args:
+      creates: /usr/bin/docker
+  
+  # start the docker service
+  - name: Ensure Docker service is started and enabled
+    ansible.builtin.service:
+      name: docker
+      state: started
+      enabled: true
+  
+  # start the docker container for uptime-kuma
+  - name: Run Uptime Kuma container
+    community.docker.docker_container:
+      name: uptime-kuma
+      image: louislam/uptime-kuma
+      state: started
+      restart_policy: always
+      published_ports:
+        - "3001:3001"
+
+# install Alloy and loki
+
+- name: Install and Configure Loki and Alloy
+  hosts: labproject
+  become: true
+  become_method: sudo
+
+  vars:
+    ansible_user: admin
+    ansible_ssh_private_key_file: /home/maks/.ssh/project-ssh-key
+
+  tasks:
+  
+  - name: Ensure APT keyrings directory exists
+    file:
+      path: /etc/apt/keyrings
+      state: directory
+      mode: '0755'
+
+  - name: Download Grafana GPG key
+    get_url:
+      url: https://apt.grafana.com/gpg-full.key
+      dest: /etc/apt/keyrings/grafana.asc
+      mode: '0644'
+
+  - name: Add Grafana APT repository
+    apt_repository:
+      repo: "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main"
+      filename: grafana
+      state: present
+
+  - name: Update APT cache
+    apt:
+      update_cache: yes
+
+  - name: Install Grafana Alloy and Loki
+    apt:
+      name:
+        - alloy
+        - loki
+      state: present
+
+  - name: Ensure Alloy config directory exists
+    file:
+      path: /etc/alloy
+      state: directory
+      mode: '0755'
+
+  - name: Copy Alloy configuration file
+    copy:
+      src: /home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/config.alloy
+      dest: /etc/alloy/config.alloy
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: Reload systemd daemon
+    systemd:
+      daemon_reload: yes
+
+  - name: Enable and start Loki service
+    systemd:
+      name: loki
+      enabled: yes
+      state: started
+
+  - name: Enable and start Alloy service
+    systemd:
+      name: alloy
+      enabled: yes
+      state: started 
+    
+    # Loki does not seem to come online unless something pings it
+    # Some dashboards don't provision correctly without loki being up and ready
+    # therefore we have to ping it until it's ready before we can even begin to 
+    # install grafana. (I wish I could run terraform destroy on myself)
+  - name: Wait for Loki instance to be fully ready
+    ansible.builtin.uri:
+      url: "http://localhost:3100/ready"
+      return_content: yes
+    register: loki_status
+    until: loki_status.content | trim == "ready"
+    retries: 40       # 40 attempts x 15 seconds = 10 minutes max wait time
+    delay: 15         # Wait 15 seconds between retries
+
+# install grafana
+- name: Install and configure Grafana
+  hosts: labproject
+  become: true
+  become_method: sudo
+
+  vars:
+    ansible_user: admin
+    ansible_ssh_private_key_file: /home/maks/.ssh/project-ssh-key
+    
+  vars_files:
+    - /home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/ansible-vars.yaml
+
+  tasks:
+    - name: Install required packages for Grafana
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - wget
+          - gnupg
+        state: present
+        update_cache: true
+    
+    # add the repo and add the keys
+    - name: Create APT keyrings directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Download Grafana GPG key
+      ansible.builtin.get_url:
+        url: https://apt.grafana.com/gpg-full.key
+        dest: /etc/apt/keyrings/grafana.asc
+        mode: "0644"
+
+    - name: Add Grafana APT repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main"
+        filename: grafana
+        state: present
+    
+    # install grafana and enable the service
+    - name: Install Grafana
+      ansible.builtin.apt:
+        name: grafana
+        state: present
+        update_cache: true
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Enable and Start Grafana Service
+      ansible.builtin.systemd:
+        name: grafana-server
+        enabled: true
+        state: started
+    
+    # copy grafana config and restart the service to apply the new source
+    - name: Copy Prometheus Grafana Datasource
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/prometheus-grafana.yaml"
+        dest: /etc/grafana/provisioning/datasources/prometheus-grafana.yaml
+        owner: root
+        group: root
+        mode: "0644"
+    
+    # Add a directory
+    - name: Create Directory For Custom Dashboards
+      ansible.builtin.file:
+        path: /var/lib/grafana/dashboards # cannot be in the provider path or it will cause the grafana server to crash
+        state: directory
+        owner: grafana
+        group: grafana
+        mode: '0755'
+    
+    # This file tells Grafana where to look for dashboards
+    - name: Configure Grafana Dashboard Provider File
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/dashboard-imports.yaml"
+        dest: /etc/grafana/provisioning/dashboards/ansible_provider.yaml
+        owner: root
+        group: root
+        mode: '0644'
+    
+    # copying all the dashboards
+    - name: Copy First Grafana Dashboard
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/dashboards/12708_rev1.json"
+        dest: /var/lib/grafana/dashboards/12708_rev1.json
+        owner: grafana
+        group: grafana
+        mode: '0644'
+
+    - name: Copy Second Grafana Dashboard
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/dashboards/1860_rev45.json"
+        dest: /var/lib/grafana/dashboards/1860_rev45.json
+        owner: grafana
+        group: grafana
+        mode: '0644'
+
+    - name: Copy Third Grafana Dashboard
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/dashboards/ssh-login-dashboard.json"
+        dest: /var/lib/grafana/dashboards/ssh-login-dashboard.json
+        owner: grafana
+        group: grafana
+        mode: '0644'
+
+    - name: Restart Grafana
+      ansible.builtin.systemd:
+        name: grafana-server
+        state: restarted
+    
+    # copying all the configs needed to set up alerting
+    - name: Copy Contact Points For Alerts
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/alerts/contact-points.yaml"
+        dest: /etc/grafana/provisioning/alerting/contact-points.yaml
+        owner: grafana
+        group: grafana
+        mode: '0644'
+
+    - name: Copy Hardware Alerts
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/alerts/hardware-alerts.yaml"
+        dest: /etc/grafana/provisioning/alerting/hardware-alerts.yaml
+        owner: grafana
+        group: grafana
+        mode: '0644'
+
+    - name: Copy SSH Login Alerts
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/alerts/ssh-login-alerts.yaml"
+        dest: /etc/grafana/provisioning/alerting/ssh-login-alerts.yaml
+        owner: grafana
+        group: grafana
+        mode: '0644'
+
+    - name: Copy Service Failure Alerts
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/alerts/service-failure.yaml"
+        dest: /etc/grafana/provisioning/alerting/service-failure.yaml
+        owner: grafana
+        group: grafana
+        mode: '0644'
+
+    - name: Copy Notification Policies
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/alerts/notification-policies.yaml"
+        dest: /etc/grafana/provisioning/alerting/notification-policies.yaml
+        owner: grafana
+        group: grafana
+        mode: '0644'
+
+    # configure smtp in grafana to enable email alerts.
+    - name: Configure Grafana SMTP
+      ansible.builtin.ini_file:
+        path: /etc/grafana/grafana.ini
+        section: smtp
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        no_extra_spaces: true
+      loop:
+        - { option: enabled, value: "true" }
+        - { option: host, value: "smtp.gmail.com:587" }
+        - { option: user, value: "{{ grafana_smtp_user }}" }
+        - { option: password, value: "\"\"\"{{ grafana_smtp_password }}\"\"\"" }
+        - { option: from_address, value: "{{ grafana_smtp_user }}" }
+        - { option: from_name, value: "Grafana" }
+        - { option: startTLS_policy, value: "OpportunisticStartTLS" }
+        - { option: skip_verify, value: "false" }
+
+    - name: Restart Grafana
+      ansible.builtin.systemd:
+        name: grafana-server
+        state: restarted

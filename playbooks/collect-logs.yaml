@@ -1,0 +1,129 @@
+---
+- name: Collect Server Logs
+  hosts: labproject
+  become: true
+  become_method: sudo
+  
+  vars:
+    collect_dir: "~/log_collection"
+    timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+    archive_name: "logs_{{ inventory_hostname }}_{{ timestamp }}.tar.gz"
+    local_output_dir: "/home/maks/itmo-453-logs/"
+    ansible_user: admin
+    ansible_ssh_private_key_file: /home/maks/.ssh/project-ssh-key
+
+  tasks:
+    
+    # make a directory on each host to initially store logs
+    - name: Create Collection Directory
+      file:
+        path: "{{ collect_dir }}"
+        state: directory
+        mode: '0755'
+    
+    # nginx logs
+    - name: Collect Nginx Access Log
+      copy:
+        remote_src: true
+        src: /var/log/nginx/access.log
+        dest: "{{ collect_dir }}/nginx_access.log"
+      ignore_errors: true
+
+    - name: Collect Nginx Error Log
+      copy:
+        remote_src: true
+        src: /var/log/nginx/error.log
+        dest: "{{ collect_dir }}/nginx_error.log"
+      ignore_errors: true
+     
+     # auth log
+    - name: Collect Auth Log
+      copy:
+        remote_src: true
+        src: /var/log/auth.log
+        dest: "{{ collect_dir }}/auth.log"
+      ignore_errors: true
+     
+    # syslog
+    - name: Collect Syslog
+      copy:
+        remote_src: true
+        src: /var/log/syslog
+        dest: "{{ collect_dir }}/syslog"
+      ignore_errors: true
+
+    # journals
+    - name: Collect Nginx Journal
+      shell: |
+        journalctl -u nginx --no-pager > {{ collect_dir }}/journal_nginx.log
+      changed_when: false
+
+    - name: Collect System Journal
+      shell: |
+        journalctl --no-pager > {{ collect_dir }}/journal_system.log
+      changed_when: false
+    
+    # kernel log
+    - name: Collect Kernel Log
+      shell: |
+        journalctl -k --no-pager > {{ collect_dir }}/kernel.log
+      changed_when: false
+    
+    # cron log
+    - name: Collect Cron Log Entries
+      shell: |
+        journalctl -u cron --no-pager > {{ collect_dir }}/cron.log
+      changed_when: false
+      ignore_errors: true
+    
+    # disk logs
+    - name: Collect Disk Usage
+      shell: |
+        df -h > {{ collect_dir }}/disk_usage.txt
+      changed_when: false
+    
+    # memory info
+    - name: Collect Memory Information
+      shell: |
+        free -m > {{ collect_dir }}/memory.txt
+      changed_when: false
+    
+    # socket log
+    - name: Collect Listening Sockets
+      shell: |
+        ss -tulpn > {{ collect_dir }}/listening_ports.txt
+      changed_when: false
+    
+    # make an archive
+    - name: Create Archive
+      archive:
+        path: "{{ collect_dir }}"
+        dest: "/tmp/{{ archive_name }}"
+        format: gz
+    
+    # ensure destination exists on control node
+    - name: Ensure Local Output Directory Exists
+      delegate_to: localhost
+      become: false
+      file:
+        path: "{{ local_output_dir }}"
+        state: directory
+    
+    # grab the logs
+    - name: Fetch Archive
+      fetch:
+        src: "/tmp/{{ archive_name }}"
+        dest: "{{ local_output_dir }}/"
+        flat: true
+    
+    # cleanup
+    - name: Cleanup Collection Directory
+      file:
+        path: "{{ collect_dir }}"
+        state: absent
+   
+    # remove archive on each host
+    - name: Remove Remote Archive
+      file:
+        path: "/tmp/{{ archive_name }}"
+        state: absent

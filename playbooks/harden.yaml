@@ -1,0 +1,102 @@
+---
+- name: Basic Security Configuration
+  hosts: all
+  become: true
+
+  vars:
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+
+    # temporary account which gets locked after initial config
+    ansible_user: ubuntu
+    ansible_password: ubuntu
+    ansible_become_password: ubuntu
+    admin_user: admin
+
+  handlers:
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+
+  tasks:
+    
+    # create a new user account for administration 
+    - name: Create admin user
+      ansible.builtin.user:
+        name: "{{ admin_user }}"
+        shell: /bin/bash
+        create_home: true
+        groups: sudo
+        append: true
+    
+    # add an ssh key for the admin user
+    - name: Add SSH key for admin user
+      ansible.posix.authorized_key:
+        user: "{{ admin_user }}"
+        state: present
+        key: "{{ lookup('file', '/home/maks/.ssh/project-ssh-key.pub') }}"
+    
+    # allow the new admin user to use sudo without a password
+    - name: Configure passwordless sudo for admin user
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ admin_user }}"
+        content: "{{ admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: "visudo -cf %s"
+    
+    # check for updates
+    - name: Update apt cache and upgrade packages
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: safe
+
+    # set the time zone
+    - name: Set timezone to America/Chicago
+      community.general.timezone:
+        name: America/Chicago
+     
+    # daily updates
+    - name: Schedule the system to update daily via cron
+      ansible.builtin.cron:
+        name: "Daily update"
+        minute: "0"
+        hour: "2"
+        user: root
+        job: "sudo apt-get update && sudo apt-get upgrade -y"
+
+    # remove unused default packages
+    - name: Remove unused default packages
+      ansible.builtin.apt:
+        name:
+          - fwupd
+          - openipmi
+        state: absent
+        autoremove: true
+        purge: true
+     
+     # reset failed units
+    - name: Reset all failed systemd units
+      ansible.builtin.command:
+        cmd: systemctl reset-failed
+      changed_when: false
+
+    # configure ssh to only accept keys for authentication
+    - name: Install hardened SSH configuration
+      ansible.builtin.copy:
+        src: /home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/sshd_config.conf
+        dest: /etc/ssh/sshd_config.d/sshd_config.conf
+        owner: root
+        group: root
+        mode: "0600"
+      notify: Restart SSH
+
+    - name: Flush handlers so SSH restarts before disabling ubuntu
+      ansible.builtin.meta: flush_handlers
+
+    # lock the account that was used during initial setup because it is not needed
+    - name: Lock ubuntu account
+      ansible.builtin.user:
+        name: ubuntu
+        password_lock: true

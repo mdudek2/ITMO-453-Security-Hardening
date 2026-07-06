@@ -1,0 +1,11 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: Email Alerts
+    receivers:
+      - uid: email-alerts
+        type: email
+        settings:
+          addresses: mdudek2@hawk.illinoistech.edu
+          singleEmail: true

@@ -1,0 +1,56 @@
+// Grafana Alloy Configuration to scrape SSH login attempts from /var/log/auth.log
+// and forward them to a Grafana Loki instance.
+
+// Discover the auth.log file
+local.file_match "ssh_logs" {
+    path_targets = [
+        { "__address__" = "localhost", "__path__" = "/var/log/auth.log", "job" = "ssh-authentication" },
+    ]
+}
+
+// Read the file content
+loki.source.file "ssh_scrape" {
+    targets    = local.file_match.ssh_logs.targets
+    forward_to = [loki.process.ssh_parse.receiver]
+}
+
+// Parse and extract structured metadata from the SSH logs
+loki.process "ssh_parse" {
+    // Match standard successful/failed logins
+    stage.regex {
+        expression = "sshd.*: (?P<ssh_event>Accepted|Failed) (?P<ssh_method>publickey|password) for (?P<ssh_user>\\S+) from (?P<ssh_ip>\\S+) port (?P<ssh_port>\\d+)"
+    }
+
+    // Match invalid user attempts
+    stage.regex {
+        expression = "sshd.*: (?P<ssh_invalid_event>Failed|Invalid user) (?P<ssh_invalid_user>\\S+) from (?P<ssh_invalid_ip>\\S+)"
+    }
+
+    // Match preauth disconnections and classify them as a failure event
+    stage.regex {
+        expression = "sshd.*: Connection closed by authenticating user (?P<ssh_preauth_user>\\S+) (?P<ssh_preauth_ip>\\S+) port (?P<ssh_preauth_port>\\d+) \\[preauth\\]"
+    }
+
+    // Map the fields to labels
+    stage.labels {
+        values = {
+            // If it's a standard login event, use that. Otherwise, check for preauth.
+            event     = "ssh_event", 
+            user      = "ssh_user",
+            client_ip = "ssh_ip",
+            
+            // Capture the preauth specific metadata if it exists
+            preauth_user = "ssh_preauth_user",
+            preauth_ip   = "ssh_preauth_ip",
+        }
+    }
+
+    forward_to = [loki.write.local_loki.receiver]
+}
+
+// Send the processed logs to the remote Loki instance
+loki.write "local_loki" {
+    endpoint {
+        url = "http://localhost:3100/loki/api/v1/push"
+    }
+}
