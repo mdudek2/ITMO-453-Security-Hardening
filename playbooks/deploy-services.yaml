@@ -38,7 +38,7 @@
     # copy over configuration for the new site
     - name: Add nginx configuration
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/hello-site.conf"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/configs/hello-site.conf"
         dest: /etc/nginx/sites-available/hello-site.conf
         owner: root
         group: root
@@ -47,7 +47,7 @@
     # copy the new website to each webserver
     - name: Copy website to servers
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/html/index.html"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/html/index.html"
         dest: /var/www/html/index.html
         owner: root
         group: root
@@ -72,7 +72,7 @@
     # copy the nginx metrics configuration file
     - name: Copy metrics.conf to nginx configuration
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/metrics.conf"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/configs/metrics.conf"
         dest: /etc/nginx/conf.d/metrics.conf
         owner: root
         group: root
@@ -122,7 +122,7 @@
     # copy the config file
     - name: Copy the prometheus configuration file
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/prometheus.yml"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/configs/prometheus.yml"
         dest: /etc/prometheus/prometheus.yml
         owner: root
         group: root
@@ -231,7 +231,7 @@
 
   - name: Copy Alloy configuration file
     copy:
-      src: /home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/config.alloy
+      src: /home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/configs/config.alloy
       dest: /etc/alloy/config.alloy
       owner: root
       group: root
@@ -277,7 +277,7 @@
     ansible_ssh_private_key_file: /home/maks/.ssh/project-ssh-key
     
   vars_files:
-    - /home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/ansible-vars.yaml
+    - /home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/ansible-vars.yaml
 
   tasks:
     - name: Install required packages for Grafana
@@ -328,7 +328,7 @@
     # copy grafana config and restart the service to apply the new source
     - name: Copy Prometheus Grafana Datasource
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/prometheus-grafana.yaml"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/configs/prometheus-grafana.yaml"
         dest: /etc/grafana/provisioning/datasources/prometheus-grafana.yaml
         owner: root
         group: root
@@ -346,7 +346,7 @@
     # This file tells Grafana where to look for dashboards
     - name: Configure Grafana Dashboard Provider File
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/dashboard-imports.yaml"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/configs/dashboard-imports.yaml"
         dest: /etc/grafana/provisioning/dashboards/ansible_provider.yaml
         owner: root
         group: root
@@ -355,7 +355,7 @@
     # copying all the dashboards
     - name: Copy First Grafana Dashboard
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/dashboards/12708_rev1.json"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/dashboards/12708_rev1.json"
         dest: /var/lib/grafana/dashboards/12708_rev1.json
         owner: grafana
         group: grafana
@@ -363,7 +363,7 @@
 
     - name: Copy Second Grafana Dashboard
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/dashboards/1860_rev45.json"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/dashboards/1860_rev45.json"
         dest: /var/lib/grafana/dashboards/1860_rev45.json
         owner: grafana
         group: grafana
@@ -371,7 +371,7 @@
 
     - name: Copy Third Grafana Dashboard
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/dashboards/ssh-login-dashboard.json"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/dashboards/ssh-login-dashboard.json"
         dest: /var/lib/grafana/dashboards/ssh-login-dashboard.json
         owner: grafana
         group: grafana
@@ -385,7 +385,7 @@
     # copying all the configs needed to set up alerting
     - name: Copy Contact Points For Alerts
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/alerts/contact-points.yaml"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/alerts/contact-points.yaml"
         dest: /etc/grafana/provisioning/alerting/contact-points.yaml
         owner: grafana
         group: grafana
@@ -393,7 +393,7 @@
 
     - name: Copy Hardware Alerts
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/alerts/hardware-alerts.yaml"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/alerts/hardware-alerts.yaml"
         dest: /etc/grafana/provisioning/alerting/hardware-alerts.yaml
         owner: grafana
         group: grafana
@@ -401,7 +401,7 @@
 
     - name: Copy SSH Login Alerts
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/alerts/ssh-login-alerts.yaml"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/alerts/ssh-login-alerts.yaml"
         dest: /etc/grafana/provisioning/alerting/ssh-login-alerts.yaml
         owner: grafana
         group: grafana
@@ -409,7 +409,7 @@
 
     - name: Copy Service Failure Alerts
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/alerts/service-failure.yaml"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/alerts/service-failure.yaml"
         dest: /etc/grafana/provisioning/alerting/service-failure.yaml
         owner: grafana
         group: grafana
@@ -417,7 +417,7 @@
 
     - name: Copy Notification Policies
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/alerts/notification-policies.yaml"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/alerts/notification-policies.yaml"
         dest: /etc/grafana/provisioning/alerting/notification-policies.yaml
         owner: grafana
         group: grafana

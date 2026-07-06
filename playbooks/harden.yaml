@@ -85,7 +85,7 @@
     # configure ssh to only accept keys for authentication
     - name: Install hardened SSH configuration
       ansible.builtin.copy:
-        src: /home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/configs/sshd_config.conf
+        src: /home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/configs/sshd_config.conf
         dest: /etc/ssh/sshd_config.d/sshd_config.conf
         owner: root
         group: root

@@ -11,7 +11,7 @@
     # copy over the install script for openscap
     - name: Copy openscap install script
       ansible.builtin.copy:
-        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Lab3/scripts/scap.sh"
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/scripts/scap.sh"
         dest: "/home/admin/scap.sh"
         owner: root
         group: root
