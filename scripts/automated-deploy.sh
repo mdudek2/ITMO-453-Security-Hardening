@@ -12,9 +12,17 @@ bash initial-hardening.sh
 echo "Running setup-firewall.sh..."
 bash setup-firewall.sh
 sleep 3
-echo "running deploy-services.sh..."
-bash deploy-services.sh
 #echo "Running openscap-hardening.sh..."
 #echo "This will probably take a while..."
-#sleep 10
+#sleep 3
 #bash openscap-hardening.sh
+#sleep 3
+echo "running deploy-services.sh..."
+bash deploy-services.sh
+sleep 3
+echo "Wrote server IPs to ansible inventory file..."
+sleep 3
+echo "Provisioning and configuration done!"
+echo "------------Inventory File------------"
+cat /etc/ansible/hosts
+echo "------------Inventory File------------"

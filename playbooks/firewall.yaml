@@ -41,50 +41,6 @@
         rule: allow
         port: "443"
         proto: tcp
-    
-    # might not be needed anymore
-    - name: Allow Node Exporter
-      community.general.ufw:
-        rule: allow
-        port: "9100"
-        proto: tcp
-    
-    # might not be needed anymore
-    - name: Allow Nginx Exporter
-      community.general.ufw:
-        rule: allow
-        port: "9113"
-        proto: tcp
-
-    - name: Allow Prometheus web interface access
-      community.general.ufw:
-        rule: allow
-        port: "9090"
-        proto: tcp
-
-    - name: Allow access to grafana web interface
-      community.general.ufw:
-        rule: allow
-        port: "3000"
-        proto: tcp
-
-    - name: Allow Uptime-Kuma Access
-      community.general.ufw:
-        rule: allow
-        port: "3001"
-        proto: tcp
-
-    - name: Allow loki Access
-      community.general.ufw:
-        rule: allow
-        port: "3100"
-        proto: tcp
-
-    - name: Allow alloy status
-      community.general.ufw:
-        rule: allow
-        port: "12345"
-        proto: tcp
 
     - name: Enable UFW Firewall Service
       community.general.ufw:

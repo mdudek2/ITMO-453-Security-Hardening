@@ -112,11 +112,3 @@ done < <(
         }
     '
 )
-
-echo "Wrote server IPs to ansible inventory file..."
-sleep 3
-echo "Provisioning Done! You can now use ansible for additional configuration."
-
-echo "------------Inventory File------------"
-cat /etc/ansible/hosts
-echo "------------Inventory File------------"

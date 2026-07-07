@@ -23,6 +23,31 @@
         name: nginx
         masked: false
 
+    # Copy the main configuration file
+    - name: Copy main configuration file
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/configs/nginx.conf"
+        dest: /etc/nginx/nginx.conf
+        owner: root
+        group: root
+        mode: '0644'
+        
+    # Generate a key
+    - name: Generate a self-signed private key
+      community.crypto.openssl_privatekey:
+        path: /etc/ssl/private/nginx-selfsigned.key
+        size: 2048
+        type: RSA
+        mode: '0600'
+    
+    # Generate a certificate
+    - name: Generate a self-signed certificate
+      community.crypto.x509_certificate:
+        path: /etc/ssl/certs/nginx-selfsigned.crt
+        privatekey_path: /etc/ssl/private/nginx-selfsigned.key
+        provider: selfsigned
+        selfsigned_not_after: "+365d"
+
     # restart nginx
     - name: Restart nginx
       ansible.builtin.systemd:
@@ -127,8 +152,39 @@
         owner: root
         group: root
         mode: '0644'
+
+    # Make an override directory    
+    - name: Create Prometheus systemd override directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/prometheus.service.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
     
-    # restart prometheus to apply the configuration
+    # Override Service flags so that prometheus is able to be proxied to by nginx
+    - name: Override Prometheus service flags for Nginx proxy
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/prometheus.service.d/override.conf
+        content: |
+          [Service]
+          # Systemd requires clearing the ExecStart line before redefining it
+          ExecStart=
+          # Redefine ExecStart with the proxy routing flags
+          ExecStart=/usr/bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/var/lib/prometheus --web.external-url=http://localhost/prometheus/ --web.route-prefix=/prometheus/
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Reload systemd
+        - Restart prometheus
+
+  # Handlers 
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
     - name: Restart prometheus
       ansible.builtin.systemd:
         name: prometheus
@@ -440,6 +496,21 @@
         - { option: from_name, value: "Grafana" }
         - { option: startTLS_policy, value: "OpportunisticStartTLS" }
         - { option: skip_verify, value: "false" }
+
+    - name: Configure Grafana for Nginx reverse proxy subdirectory matching
+      community.general.ini_file:
+        path: /etc/grafana/grafana.ini
+        section: server
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        backup: yes # Automatically creates a backup file before changing anything
+      loop:
+        - { option: 'protocol', value: 'http'}
+        - { option: 'http_addr', value: '127.0.0.1'}
+        - { option: 'http_port', value: '3000'}
+        - { option: 'domain', value: '192.168.56.222'}
+        - { option: 'root_url', value: '%(protocol)s://%(domain)s:%(http_port)s/grafana/' }
+        - { option: 'serve_from_sub_path', value: 'true' }
 
     - name: Restart Grafana
       ansible.builtin.systemd:

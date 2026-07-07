@@ -30,11 +30,8 @@ There are also a few ports that are open unnecessarily. This system should only 
 - 22 
 - 80
 - 443
-- 3000
-- 3001
-- 9090
 
-All other ports should be closed since there isn't any service that needs those ports open, nor is there any visible administration dashboard that needs to be accessible.
+All other ports should be closed since there isn't any service that needs those ports open, nor is there any visible administration dashboard that needs to be accessible. Nginx will be used as a proxy to prevent opening additional ports
 
 ### Website Analysis
 
@@ -76,15 +73,17 @@ X-Content-Type-Options Header Missing
 
 The following steps will be taken to resolve the issues identified with this system:
 
-1. Configure the server to use nginx as a proxy to reduc fingerprinting.
+1. Configure the server to use nginx as a proxy to reduce fingerprinting.
 
 2. Create and deploy a self signed certificate to enable https.
 
-3. Update firewall rules and close unnecessary ports.
+3. Rework nginx configuration so that other services are accessible via proxy
 
-4. Resolve all issues identified by ZAP Scanner
+4. Update firewall rules and close unnecessary ports.
 
-5. Change deployment order so that OpensScap scanner runs a scan and remediation before anything else is installed. 
+5. Resolve all issues identified by ZAP Scanner
+
+6. Change deployment order so that OpensScap scanner runs a scan and remediation before anything else is installed. 
 
 ## Threat Model
 
