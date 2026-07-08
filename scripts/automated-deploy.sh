@@ -12,11 +12,11 @@ bash initial-hardening.sh
 echo "Running setup-firewall.sh..."
 bash setup-firewall.sh
 sleep 3
-#echo "Running openscap-hardening.sh..."
-#echo "This will probably take a while..."
-#sleep 3
-#bash openscap-hardening.sh
-#sleep 3
+echo "Running openscap-hardening.sh..."
+echo "This will probably take a while..."
+sleep 3
+bash openscap-hardening.sh
+sleep 3
 echo "running deploy-services.sh..."
 bash deploy-services.sh
 sleep 3

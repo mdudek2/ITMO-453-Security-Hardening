@@ -190,8 +190,7 @@
         name: prometheus
         state: restarted
 
-# install uptime-kuma on the server
-- name: Install Docker and additional monitoring and logging services
+- name: Install Docker and Docker Compose to setup uptime-kuma
   hosts: labproject
   become: true
   become_method: sudo
@@ -199,44 +198,78 @@
   vars:
     ansible_user: admin
     ansible_ssh_private_key_file: /home/maks/.ssh/project-ssh-key
-  
-  tasks:
-  
-  # install needed dependencies
-  - name: Install required packages
-    ansible.builtin.apt:
-      name:
-        - apt-transport-https
-        - ca-certificates
-        - curl
-        - software-properties-common
-      state: present
-      update_cache: true
-  
-  # grab the script from the docker website and run it
-  - name: Install Docker using the official installation script
-    ansible.builtin.shell: |
-      curl -fsSL https://get.docker.com | bash
-    args:
-      creates: /usr/bin/docker
-  
-  # start the docker service
-  - name: Ensure Docker service is started and enabled
-    ansible.builtin.service:
-      name: docker
-      state: started
-      enabled: true
-  
-  # start the docker container for uptime-kuma
-  - name: Run Uptime Kuma container
-    community.docker.docker_container:
-      name: uptime-kuma
-      image: louislam/uptime-kuma
-      state: started
-      restart_policy: always
-      published_ports:
-        - "3001:3001"
 
+  tasks:
+    - name: Ensure prerequisite packages are installed
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+        update_cache: true
+
+    - name: Add Docker official GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Set up the stable Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        update_cache: true
+
+    - name: Install Docker and Docker Compose
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Ensure Docker service is running and enabled on boot
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Copy over configuration for uptime-kuma
+      ansible.builtin.copy:
+        src: "/home/maks/Documents/repos/mdudek2/ITMO-453-Security-Hardening/kuma-nginx-container-config/"
+        dest: "/home/admin/kuma-nginx-container-config/"
+        owner: admin
+        group: admin
+        mode: "0644"
+
+    - name: Make entrypoint script executable
+      ansible.builtin.file:
+        path: "/home/admin/kuma-nginx-container-config/entrypoint.sh"
+        owner: admin
+        group: admin
+        mode: "0755"
+
+    - name: Run entrypoint script
+      ansible.builtin.command:
+        cmd: "./entrypoint.sh"
+        chdir: "/home/admin/kuma-nginx-container-config/"
+
+    - name: Make install script executable
+      ansible.builtin.file:
+        path: "/home/admin/kuma-nginx-container-config/install.sh"
+        owner: admin
+        group: admin
+        mode: "0755"
+    
+    - name: Run install script
+      ansible.builtin.command:
+        cmd: "./entrypoint.sh"
+        chdir: "/home/admin/kuma-nginx-container-config/"
+    
 # install Alloy and loki
 
 - name: Install and Configure Loki and Alloy
@@ -508,7 +541,7 @@
         - { option: 'protocol', value: 'http'}
         - { option: 'http_addr', value: '127.0.0.1'}
         - { option: 'http_port', value: '3000'}
-        - { option: 'domain', value: '192.168.56.222'}
+        - { option: 'domain', value: '192.168.56.230'}
         - { option: 'root_url', value: '%(protocol)s://%(domain)s:%(http_port)s/grafana/' }
         - { option: 'serve_from_sub_path', value: 'true' }
 

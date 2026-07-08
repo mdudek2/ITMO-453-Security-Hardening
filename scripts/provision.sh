@@ -48,6 +48,7 @@ fi
 # remove the old key from ssh to prevent issues with remote host id
 echo "Removing old host key from ssh..."
 sudo ssh-keygen -f '/root/.ssh/known_hosts' -R '192.168.56.230'
+sudo ssh-keygen -f '/home/maks/.ssh/known_hosts' -R '192.168.56.230'
 
 # start multiple VMs using a for loop
 for i in $(seq 1 "$VM_COUNT"); do

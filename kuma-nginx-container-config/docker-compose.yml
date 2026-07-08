@@ -1,0 +1,32 @@
+# Originally from: https://github.com/arulrajnet/uptime-kuma-subfolder-compose
+# The port was modified from 8080 to 4000
+# This is a workaround to enable uptime-kuma to be hosted behind a proxy
+# Uptime-kuma and an nginx server are installed in the same container and are proxied
+# to by the host systems nginx server. This allows uptime-kuma to be accessed at /kuma 
+# from the host systems IP address
+
+name: kuma
+
+volumes:
+  kuma:
+
+services:
+
+  nginx:
+    image: nginx:1.27.5
+    volumes:
+      - ${PWD}/kuma-nginx.conf:/etc/nginx/conf.d/kuma-nginx.conf
+    ports:
+      - 4000:4000
+
+  kuma:
+    image: louislam/uptime-kuma:1.23.16
+    entrypoint: /entrypoint.sh
+    command: ["node", "/app/server/server.js"]
+    environment:
+      SERVER_CONTEXTPATH: "/kuma"
+    volumes:
+      - ${PWD}/entrypoint.sh:/entrypoint.sh
+      - kuma:/app/data
+    ports:
+      - 3001
