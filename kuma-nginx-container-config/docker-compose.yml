@@ -14,6 +14,7 @@ services:
 
   nginx:
     image: nginx:1.27.5
+    restart: unless-stopped
     volumes:
       - ${PWD}/kuma-nginx.conf:/etc/nginx/conf.d/kuma-nginx.conf
     ports:
@@ -21,6 +22,7 @@ services:
 
   kuma:
     image: louislam/uptime-kuma:1.23.16
+    restart: unless-stopped
     entrypoint: /entrypoint.sh
     command: ["node", "/app/server/server.js"]
     environment:
@@ -29,4 +31,4 @@ services:
       - ${PWD}/entrypoint.sh:/entrypoint.sh
       - kuma:/app/data
     ports:
-      - 3001
+      - 3001:3001
