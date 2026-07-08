@@ -87,7 +87,13 @@ The following steps will be taken to resolve the issues identified with this sys
 
 ## Threat Model
 
-WIP
+OWASP Threat Dragon was used as a threat modeling tool for this system. This is an open source tool that is free to use. A STRIDE threat model was created and a report was generated. The full report is available as a PDF in this repository, while the diagram is inserted below for convenience.
+
+More information about OWASP Threat Dragon can be found here: https://owasp.org/www-project-threat-dragon/
+
+### STRIDE Diagram
+
+![](./images/threat-model.png)
 
 ## Risk Analysis
 
