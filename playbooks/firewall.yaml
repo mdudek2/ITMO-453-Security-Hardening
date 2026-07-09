@@ -7,7 +7,8 @@
   vars:
     ansible_user: admin
     ansible_ssh_private_key_file: /home/maks/.ssh/project-ssh-key
-  
+    hostonly_interface: enp0s8
+    
   # firewall rules for web servers
   tasks:
     - name: Reset UFW Firewall
@@ -41,19 +42,37 @@
         rule: allow
         port: "443"
         proto: tcp
-
-    # temporary
-    - name: Allow Access to Prometheus for Kuma
+    
+    # need to allow access to logging because uptime-kuma is running in a docker container
+    - name: Allow restricted services on all interfaces
       community.general.ufw:
-        rule: "allow"
-        port: "9090"
+        rule: allow
+        port: "3100"
         proto: tcp
 
-    # temporary
-    - name: Allow Access to loki for Kuma
+    # need to allow access to logging because uptime-kuma is running in a docker container
+    - name: Allow restricted services on all interfaces
       community.general.ufw:
-        rule: "allow"
+        rule: allow
+        port: "9090"
+        proto: tcp
+  
+    # block direct access to logging servers (prometheus and loki)
+    - name: Deny loki access on VirtualBox host-only interface
+      community.general.ufw:
+        rule: deny
+        direction: in
+        interface: "{{ hostonly_interface }}"
         port: "3100"
+        proto: tcp
+
+    # block direct access to logging servers (prometheus and loki)
+    - name: Deny prometheus access on VirtualBox host-only interface
+      community.general.ufw:
+        rule: deny
+        direction: in
+        interface: "{{ hostonly_interface }}"
+        port: "9090"
         proto: tcp
 
     - name: Enable UFW Firewall Service
