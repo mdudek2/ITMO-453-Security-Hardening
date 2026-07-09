@@ -97,4 +97,82 @@ More information about OWASP Threat Dragon can be found here: https://owasp.org/
 
 ## Risk Analysis
 
-WIP
+A total of 5 unique threats/risks to the system were identified as a part of the threat modeling and risk analysis. More detailed information about each specific threat as well as it's severity, mitigation strategy, and overall risk is listed bleow.
+
+### Threat Breakdown
+
+#### Threat 1: Unauthorized Login
+
+Description: An attacker could take advantage of a weak password and gain
+access to an administrators dashboard.
+
+- Threat type: Elevation of Privilege
+- SeverityL Medium
+- Status: Open
+- Score: 3
+
+Mitigation: Implement a strong organisational
+password policy.
+
+Residual Risk After Mitigation: An attacker could still crack a password by exploiting flaws in application code or by social engineering. 
+
+#### Threat 2: OS And Service Fingerprinting 
+
+Description: An attacker could scan the system using
+tools such as nmap and discover
+information about running services and OS
+info.
+
+- Threat type: Information Disclosure
+- Severity: High
+- Status: Open
+- Score: 5
+
+Mitigation: Host services through a proxy and configure the system
+to minimize the amount of information that is revealed.
+Only open firewall ports that are absolutely necessary.
+
+Residual Risk After Mitigation: An attacker could still make use of other techniques such as timing attacks to figure out information about a system and its services.
+
+#### Threat 3: Eavesdropping 
+
+Description: An attacker could listen in on http traffic over a public connection
+
+- Threat type: Tampering
+- Severity: High
+- Status: Open
+- Score: 5
+
+Mitigation: Use HTTPS for all public connections.
+
+Residual Risk After Mitigation: HTTPS alone does not completely solve the issue. There are still potential security issues such as weak tls, stolen/fake certificates, and poorly written application code.
+
+#### Threat 4: DDOS Attack 
+
+Description: An attacker could execute a denial of
+service attack and bring down the system.
+
+ - Threat type: Denial of Service
+ - Severity: High
+ - Status: Open
+ - Score: 5
+
+Mitigation: Implement protective measures such as fail2ban or
+cloudflare.
+
+Residual Risk After Mitigation: Cloudflare and fail2ban can minimize the risk of DDOS attacks but cannot fully stop misuse of a system, nor will they protect against flaws in code that allow exploits.
+
+#### Threat 5: Log Contains Sensitive Data
+
+Description: Logs are read by unauthorised users or made
+public, sensitive data is then disclosed.
+
+ - Threat type: Information disclosure
+ - Severity: low
+ - Status: Open
+ - Score: 2
+
+Mitigation: Minimise any sensitive data contained in logs,
+consider encryption techniques
+
+Residual Risk After Mitigation: Even if logs are encrypted there is still the possibility that someone can simply break into the logging system and obtain the logs that way. A flaw in the services code can also allow an attacker to decrypt the logs.
